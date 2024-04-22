@@ -1,2 +1,118 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+/ Universidad del valle de Guatemala
+// IE2023 Programación de Microcontroladores
+// Author : Victor Vanegas - 22829
+// Laboratorio: Laboratorio5.asm
+// Descripción: Controlar 2 servomotores y la intensiadad de un led con un potenciometre cada uno
+// Hardware: ATMega328P
+
+#define F_CPU 16000000UL
+#include <avr/io.h>
+#include <avr/interrupt.h>
+#include <util/delay.h>
+#include "PWM1/PWM1.h"
+
+volatile uint8_t conversion = 1; // Inicializo mi contador.
+volatile uint16_t contador1 = 0; // Inicializo mi contador
+volatile uint16_t valor = 0;
+volatile uint8_t valoradc = 0; // Variable donde guardaré el valor ADC.
+volatile uint8_t bmenosig = 0; // Variable donde guardo los 4 bits menos significativos.
+
+void setupPWM(uint8_t canal, uint8_t pin) {
+    cli();
+    // Configurando el pin del puerto B como salida.
+    DDRB |= (1 << pin);
+
+    switch (canal) {
+        case 0:
+            TCCR0A = 0;
+            TCCR0B = 0;
+            // Configuramos en modo rápido no invertido.
+            TCCR0A |= (1 << COM0A1);
+            // Configuramos el modo Fast para que llegue al OCR0A
+            TCCR0A |= (1 << WGM01) | (1 << WGM00);
+            // Configuramos el prescaler a 8
+            TCCR0B |= (1 << CS01);
+            break;
+        case 1:
+            TCCR1A = 0;
+            TCCR1B = 0;
+            // Configuramos en modo rápido no invertido.
+            TCCR1A |= (1 << COM1A1);
+            // Configuramos el modo Fast para que llegue al OCR1A
+            TCCR1A |= (1 << WGM11) | (1 << WGM10);
+            // Configuramos el prescaler a 8
+            TCCR1B |= (1 << CS11);
+            break;
+        case 2:
+            TCCR2A = 0;
+            TCCR2B = 0;
+            // Configuramos en modo rápido no invertido.
+            TCCR2A |= (1 << COM2A1);
+            // Configuramos el modo Fast para que llegue al OCR2A
+            TCCR2A |= (1 << WGM21) | (1 << WGM20);
+            // Configuramos el prescaler a 1024
+            TCCR2B |= (1 << CS22) | (1 << CS21) | (1 << CS20);
+            break;
+        default:
+            // Canal inválido, manejar el error aquí
+            break;
+    }
+    sei();
+}
+
+void InitADC(uint8_t canal) {
+    ADMUX = (1 << REFS0); // Estoy configurando a que funcione con AVCC.
+    ADMUX &= ~(1 << REFS1);
+    // Justificacion a la izquierda.
+    ADMUX |= (1 << ADLAR);
+    // Apago la salida digital del pin del ADC correspondiente
+    if (canal == 0)
+        DIDR0 |= (1 << ADC0D);
+    else if (canal == 1)
+        DIDR0 |= (1 << ADC2D);
+    else if (canal == 2)
+        DIDR0 |= (1 << ADC1D);
+    // Configuración del canal del ADC
+    ADMUX |= (canal & 0x03);
+    ADCSRA = 0;
+    // Habilito la interrupción del ADC
+    ADCSRA |= (1 << ADIE);
+    // Habilito el prescaler a 128.
+    ADCSRA |= (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
+    // Habilito el ADC
+    ADCSRA |= (1 << ADEN);
+}
+
+//*****************************************************
+// Loop principal:
+//*****************************************************
+int main(void) {
+    setupPWM(2, DDB2); // Configuro PWM para canal 2 en el pin DDB2
+    setupPWM(1, DDB1); // Configuro PWM para canal 1 en el pin DDB1
+    setupPWM(0, DDB3); // Configuro PWM para canal 0 en el pin DDB3
+    InitADC(0); // Inicializa ADC para canal 0
+    InitADC(1); // Inicializa ADC para canal 1
+    InitADC(2); // Inicializa ADC para canal 2
+
+    while (1) {
+        // Realiza PWM para cada canal con el valor actual del ADC
+        PWM1(2, valoradc);
+        _delay_ms(10);
+        PWM1(1, valoradc);
+        _delay_ms(10);
+        PWM1(0, valoradc);
+        _delay_ms(10);
+    }
+    return 0;
+}
+
+//*****************************************************
+// Interrupciones:
+//*****************************************************
+
+ISR(ADC_vect) {
+    // Guarda el valor del ADC
+    valoradc = ADCH;
+    // Apaga la bandera de interrupción del ADC
+    ADCSRA |= (1 << ADIF);
+}
