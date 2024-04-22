@@ -1,2 +1,15 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+/*
+ * PWM1.h	
+ *  Author: Victor Vanegas
+ */ 
+
+
+#ifndef PWM1_H_
+#define PWM1_H_
+
+#include <avr/io.h>
+#include <stdint.h>
+
+int PWM1(uint8_t numeropot, uint8_t valoradc);
+
+#endif
