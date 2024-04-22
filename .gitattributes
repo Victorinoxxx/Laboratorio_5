@@ -1,2 +1,33 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+/*
+ * PWM1.c
+ *  Author: Victor Vanegas
+ */ 
+
+#include "PWM1.h"
+
+int configurarPWM(uint8_t canal, uint8_t valorADC) {
+	uint16_t valorTotal;
+	switch (canal) {
+		case 0:
+		ADMUX = (ADMUX & 0xF0) | canal;
+		ADCSRA |= (1 << ADSC);
+		OCR2A = (0.094 * valorADC) + 6.7;
+		break;
+		case 1:
+		ADMUX = (ADMUX & 0xF0) | canal;
+		ADCSRA |= (1 << ADSC);
+		valorTotal = (32.94 * valorADC) + 1199.06; // mapeo(valorADC, 0, 255, 19, 39);
+		OCR1AH = (valorTotal & 0xFF00) >> 8;
+		OCR1AL |= valorTotal & 0x00FF;
+		break;
+		case 2:
+		ADMUX = (ADMUX & 0xF0) | canal;
+		ADCSRA |= (1 << ADSC);
+		OCR0A = valorADC;
+		break;
+		default:
+		break;
+	}
+	while (ADCSRA & (1 << ADSC));
+	return ADC;
+}
